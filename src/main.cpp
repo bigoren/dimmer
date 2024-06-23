@@ -35,9 +35,10 @@ unsigned int sig_resolution = 1;    // Resolution = 1 bit => 2^1 = 0, 1, 2
 unsigned int res_max_value;         // Maximum value of the resolution = 2 ^ resolution - 1
 unsigned long sig_duty = 1;         // Duty cycle of 1/2 or 50% (1 is 50% of 1/2^1)
 uint32_t sig_freq = sig_0_freq;     // Set the frequency
-uint8_t percent = 50;               // Current duty cycle percentage
-uint8_t prev_percent = 50;          // previous duty cycle percentage
-uint8_t req_percent = 3;            // Requested duty cycle percentage
+uint8_t percent = 35;               // Current duty cycle percentage
+uint8_t prev_percent = 35;          // previous duty cycle percentage
+uint8_t req_percent = 35;           // Requested duty cycle percentage
+uint8_t req_delay = 1;              // Requested delay in milliseconds
 
 void dataReceived (uint8_t* address, uint8_t* data, uint8_t len, signed int rssi, bool broadcast) {
     Serial.print ("Bytes received: ");
@@ -48,6 +49,8 @@ void dataReceived (uint8_t* address, uint8_t* data, uint8_t len, signed int rssi
     Serial.printf ("%s\n", broadcast ? "Broadcast" : "Unicast");
     req_percent = data[0];
     Serial.print("req_percent: "); Serial.println(req_percent);
+    req_delay = data[1];
+    Serial.print("req_delay: "); Serial.println(req_delay);
 }
 
 void setup() {
@@ -88,6 +91,7 @@ void setup() {
 
     sig_duty = res_max_value * percent / 100;
     ledcWrite(pin_channel, sig_duty);
+    Serial.print("Dimmer ESP setup done. Duty cycle set to: "); Serial.println(sig_duty);
 }
 
 void loop() {
@@ -97,12 +101,13 @@ void loop() {
         } else {
             sig_duty--;
         }
-        percent = sig_duty * 100 / res_max_value;
+        percent = ceil(sig_duty * 100 / (float)res_max_value);
         // sig_duty = res_max_value * percent / 100;
         ledcWrite(pin_channel, sig_duty);
-        delay(1);
+        delay(req_delay);
         if (percent != prev_percent) {
             Serial.print("percent: "); Serial.println(percent);
+            Serial.print("sig_duty: "); Serial.println(sig_duty);
         }
         prev_percent = percent;
     }
